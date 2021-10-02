@@ -1,24 +1,32 @@
-const routes = require('express').Router();
-const multer = require('multer');
-const multerConfig = require('./config/multer');
+const routes = require("express").Router();
+const formidable = require("formidable");
+const bcrypt = require("bcryptjs");
+const path = require("path");
 
 // post schema module configuration
-const Post = require('./models/Post')
+const Post = require("./models/Post");
 
 // configurando rotas de acesso
-routes.post('/posts', multer(multerConfig).single('file'), async (req, res) => {
-    // destructuring req to make a simple read
-    const { originalname: name, size, filename: key } = req.file;
+routes.post("/posts", async (req, res) => {
+  const form = new formidable.IncomingForm({
+    uploadDir: path.resolve(__dirname, "..", "uploads"),
+  });
 
-    // json storage object info
-    const post = await Post.create({
-        name,
-        size,
-        key,
-        url: '',
-    });
-     
-    return res.json(post);
+  form.parse(req, (err, fields, files) => {
+    if (err) {
+      next(err);
+      return;
+    }
+
+    Promise.all(
+      Object.keys(files).map((key, index) => {
+        const hash = bcrypt.hashSync(files[key].name, 8);
+        const newName = hash.replace(/[^\w\s]/gi, "");
+
+        // files[key].name = newName;
+      })
+    ).then(() => res.json({ fields, files }));
+  });
 });
 
 // exportando rotas
